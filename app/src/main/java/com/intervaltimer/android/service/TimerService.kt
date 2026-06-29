@@ -3,7 +3,12 @@ package com.intervaltimer.android.service
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.graphics.PixelFormat
 import android.os.IBinder
+import android.provider.Settings
+import android.view.*
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.intervaltimer.android.R
 import com.intervaltimer.android.data.AppDatabase
@@ -31,12 +36,22 @@ class TimerService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var timerJob: Job? = null
     private lateinit var sound: SoundManager
+
     private var intervals: List<Interval> = emptyList()
     private var finalSound: SoundType = SoundType.FANFARE
     private var vibrationEnabled: Boolean = true
     private var currentIndex = 0
     private var remainingSeconds = 0
     private var isPaused = false
+
+    // Floating overlay
+    private var windowManager: WindowManager? = null
+    private var overlayView: View? = null
+    private var overlayParams: WindowManager.LayoutParams? = null
+    private var dragInitX = 0
+    private var dragInitY = 0
+    private var dragTouchX = 0f
+    private var dragTouchY = 0f
 
     override fun onCreate() {
         super.onCreate()
@@ -61,16 +76,17 @@ class TimerService : Service() {
         scope.launch {
             val db = AppDatabase.get(this@TimerService)
             val preset = db.presetDao().getById(presetId) ?: return@launch
-            val loadedIntervals = db.intervalDao().getByPreset(presetId)
-            if (loadedIntervals.isEmpty()) return@launch
+            val loaded = db.intervalDao().getByPreset(presetId)
+            if (loaded.isEmpty()) return@launch
 
-            intervals = loadedIntervals
+            intervals = loaded
             finalSound = preset.finalSoundType
             vibrationEnabled = preset.vibrationEnabled
             currentIndex = 0
             isPaused = false
 
             startForeground(NOTIF_ID, buildNotification("Запуск...", ""))
+            showOverlay()
             runInterval()
         }
     }
@@ -86,12 +102,10 @@ class TimerService : Service() {
 
         timerJob = scope.launch {
             while (remainingSeconds > 0) {
-                if (isPaused) {
-                    delay(200)
-                    continue
-                }
+                if (isPaused) { delay(200); continue }
+
                 val nextName = if (currentIndex + 1 < intervals.size) intervals[currentIndex + 1].name else "—"
-                val s = TimerState.Running(
+                state.value = TimerState.Running(
                     intervalName = interval.name,
                     nextIntervalName = nextName,
                     remainingSeconds = remainingSeconds,
@@ -100,13 +114,14 @@ class TimerService : Service() {
                     totalIntervals = intervals.size,
                     isPaused = false
                 )
-                state.value = s
-                updateNotification(interval.name, formatTime(remainingSeconds))
+                val timeStr = formatTime(remainingSeconds)
+                updateNotification(interval.name, timeStr)
+                updateOverlayUi(interval.name, timeStr,
+                    ((interval.durationSeconds - remainingSeconds).toFloat() / interval.durationSeconds * 100).toInt())
                 delay(1000)
                 if (!isPaused) remainingSeconds--
             }
 
-            // Интервал завершён
             sound.play(interval.soundType, vibrationEnabled)
             currentIndex++
             delay(500)
@@ -118,6 +133,7 @@ class TimerService : Service() {
         sound.play(finalSound, vibrationEnabled)
         state.value = TimerState.Finished
         updateNotification("Готово!", "Все интервалы завершены")
+        updateOverlayUi("Готово!", "0:00", 100)
         scope.launch {
             delay(3000)
             stopSelf()
@@ -126,35 +142,89 @@ class TimerService : Service() {
 
     private fun pauseTimer() {
         isPaused = true
-        val current = state.value
-        if (current is TimerState.Running) {
-            state.value = current.copy(isPaused = true)
-        }
+        val cur = state.value
+        if (cur is TimerState.Running) state.value = cur.copy(isPaused = true)
         updateNotification(getCurrentName(), "Пауза · ${formatTime(remainingSeconds)}")
     }
 
     private fun resumeTimer() {
         isPaused = false
-        val current = state.value
-        if (current is TimerState.Running) {
-            state.value = current.copy(isPaused = false)
-        }
+        val cur = state.value
+        if (cur is TimerState.Running) state.value = cur.copy(isPaused = false)
     }
 
     private fun stopTimer() {
         timerJob?.cancel()
         state.value = TimerState.Idle
+        hideOverlay()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     private fun getCurrentName() = intervals.getOrNull(currentIndex)?.name ?: ""
 
+    // ── Floating overlay ──────────────────────────────────────────
+
+    private fun showOverlay() {
+        if (!Settings.canDrawOverlays(this)) return
+        if (overlayView != null) return
+
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        overlayView = LayoutInflater.from(this).inflate(R.layout.layout_floating_timer, null)
+
+        overlayParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 60
+            y = 200
+        }
+
+        windowManager!!.addView(overlayView, overlayParams)
+
+        overlayView!!.setOnTouchListener(object : View.OnTouchListener {
+            override fun onTouch(v: View, event: MotionEvent): Boolean {
+                when (event.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        dragInitX = overlayParams!!.x
+                        dragInitY = overlayParams!!.y
+                        dragTouchX = event.rawX
+                        dragTouchY = event.rawY
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        overlayParams!!.x = dragInitX + (event.rawX - dragTouchX).toInt()
+                        overlayParams!!.y = dragInitY + (event.rawY - dragTouchY).toInt()
+                        windowManager!!.updateViewLayout(overlayView, overlayParams)
+                    }
+                }
+                return true
+            }
+        })
+    }
+
+    private fun updateOverlayUi(name: String, time: String, progress: Int) {
+        val v = overlayView ?: return
+        v.findViewById<TextView>(R.id.tvOverlayName)?.text = name
+        v.findViewById<TextView>(R.id.tvOverlayTime)?.text = time
+        v.findViewById<ProgressBar>(R.id.overlayProgress)?.progress = progress
+    }
+
+    private fun hideOverlay() {
+        overlayView?.let {
+            try { windowManager?.removeView(it) } catch (_: Exception) {}
+        }
+        overlayView = null
+    }
+
+    // ── Notification ─────────────────────────────────────────────
+
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Интервальный таймер",
-            NotificationManager.IMPORTANCE_LOW
+            CHANNEL_ID, "Интервальный таймер", NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Уведомление активного таймера"
             setSound(null, null)
@@ -168,23 +238,12 @@ class TimerService : Service() {
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
         val pauseAction = if (isPaused) {
-            NotificationCompat.Action(
-                R.drawable.ic_play, "Продолжить",
-                pendingAction(ACTION_RESUME, 2)
-            )
+            NotificationCompat.Action(R.drawable.ic_play, "Продолжить", pendingAction(ACTION_RESUME, 2))
         } else {
-            NotificationCompat.Action(
-                R.drawable.ic_pause, "Пауза",
-                pendingAction(ACTION_PAUSE, 1)
-            )
+            NotificationCompat.Action(R.drawable.ic_pause, "Пауза", pendingAction(ACTION_PAUSE, 1))
         }
-
-        val stopAction = NotificationCompat.Action(
-            R.drawable.ic_stop, "Стоп",
-            pendingAction(ACTION_STOP, 3)
-        )
+        val stopAction = NotificationCompat.Action(R.drawable.ic_stop, "Стоп", pendingAction(ACTION_STOP, 3))
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_timer_notif)
@@ -205,8 +264,7 @@ class TimerService : Service() {
     }
 
     private fun updateNotification(title: String, text: String) {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(NOTIF_ID, buildNotification(title, text))
+        getSystemService(NotificationManager::class.java).notify(NOTIF_ID, buildNotification(title, text))
     }
 
     private fun formatTime(seconds: Int): String {
@@ -224,6 +282,7 @@ class TimerService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
+        hideOverlay()
         state.value = TimerState.Idle
         super.onDestroy()
     }

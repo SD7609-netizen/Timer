@@ -14,10 +14,15 @@ data class Interval(
 )
 
 enum class SoundType(val label: String) {
-    BEEP_SINGLE("Один бип"),
+    BEEP_SINGLE("Короткий бип"),
     BEEP_DOUBLE("Двойной бип"),
+    BEEP_TRIPLE("Тройной бип"),
     BELL("Звонок"),
     WHISTLE("Свисток"),
     CHIME("Колокол"),
+    LOW_BEEP("Низкий сигнал"),
+    HIGH_BEEP("Высокий сигнал"),
+    DING("Динь"),
+    PULSE("Пульс"),
     FANFARE("Финальный сигнал")
 }

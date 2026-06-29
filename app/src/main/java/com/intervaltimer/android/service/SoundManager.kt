@@ -3,12 +3,12 @@ package com.intervaltimer.android.service
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
-import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.VibrationEffect
 import android.os.Vibrator
 import com.intervaltimer.android.data.SoundType
 import kotlin.math.PI
+import kotlin.math.exp
 import kotlin.math.sin
 
 class SoundManager(private val context: Context) {
@@ -20,9 +20,14 @@ class SoundManager(private val context: Context) {
             when (soundType) {
                 SoundType.BEEP_SINGLE -> playTone(880.0, 200)
                 SoundType.BEEP_DOUBLE -> { playTone(880.0, 150); Thread.sleep(100); playTone(880.0, 150) }
+                SoundType.BEEP_TRIPLE -> { repeat(3) { playTone(880.0, 120); Thread.sleep(80) } }
                 SoundType.BELL -> playBell()
                 SoundType.WHISTLE -> playWhistle()
                 SoundType.CHIME -> playChime()
+                SoundType.LOW_BEEP -> playTone(220.0, 400, 0.9f)
+                SoundType.HIGH_BEEP -> playTone(1760.0, 200, 0.8f)
+                SoundType.DING -> playDing()
+                SoundType.PULSE -> playPulse()
                 SoundType.FANFARE -> playFanfare()
             }
         }.start()
@@ -31,6 +36,8 @@ class SoundManager(private val context: Context) {
             val pattern = when (soundType) {
                 SoundType.FANFARE -> longArrayOf(0, 200, 100, 200, 100, 400)
                 SoundType.BEEP_DOUBLE -> longArrayOf(0, 100, 80, 100)
+                SoundType.BEEP_TRIPLE -> longArrayOf(0, 80, 60, 80, 60, 80)
+                SoundType.PULSE -> longArrayOf(0, 60, 60, 60, 60, 60)
                 else -> longArrayOf(0, 200)
             }
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
@@ -52,42 +59,17 @@ class SoundManager(private val context: Context) {
             }
             buffer[i] = (sample * fade).toInt().toShort()
         }
-
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build()
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                    .build()
-            )
-            .setBufferSizeInBytes(buffer.size * 2)
-            .setTransferMode(AudioTrack.MODE_STATIC)
-            .build()
-
-        track.write(buffer, 0, buffer.size)
-        track.play()
-        Thread.sleep(durationMs.toLong() + 50)
-        track.stop()
-        track.release()
+        writeAndPlay(buffer, sampleRate, durationMs)
     }
 
     private fun playBell() {
-        // Имитация колокола: убывающий сигнал с несколькими гармониками
         val sampleRate = 44100
         val durationMs = 800
         val samples = sampleRate * durationMs / 1000
         val buffer = ShortArray(samples)
-
         for (i in 0 until samples) {
             val t = i.toDouble() / sampleRate
-            val decay = Math.exp(-t * 3.0)
+            val decay = exp(-t * 3.0)
             val sample = ((sin(2 * PI * 660 * t) * 0.5 +
                     sin(2 * PI * 990 * t) * 0.3 +
                     sin(2 * PI * 1320 * t) * 0.2) * decay * 0.8 * Short.MAX_VALUE).toInt()
@@ -97,12 +79,10 @@ class SoundManager(private val context: Context) {
     }
 
     private fun playWhistle() {
-        // Свисток: быстро нарастает, держится, убывает
         val sampleRate = 44100
         val durationMs = 400
         val samples = sampleRate * durationMs / 1000
         val buffer = ShortArray(samples)
-
         for (i in 0 until samples) {
             val t = i.toDouble() / sampleRate
             val freq = 1800.0 + 200.0 * sin(2 * PI * 6 * t)
@@ -118,7 +98,6 @@ class SoundManager(private val context: Context) {
     }
 
     private fun playChime() {
-        // Колокольчик: три ноты
         playTone(523.25, 200, 0.7f)
         Thread.sleep(50)
         playTone(659.25, 200, 0.7f)
@@ -126,8 +105,28 @@ class SoundManager(private val context: Context) {
         playTone(783.99, 300, 0.7f)
     }
 
+    private fun playDing() {
+        val sampleRate = 44100
+        val durationMs = 600
+        val samples = sampleRate * durationMs / 1000
+        val buffer = ShortArray(samples)
+        for (i in 0 until samples) {
+            val t = i.toDouble() / sampleRate
+            val decay = exp(-t * 4.0)
+            val v = sin(2 * PI * 1047.0 * t) * decay * 0.85 * Short.MAX_VALUE
+            buffer[i] = v.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+        writeAndPlay(buffer, sampleRate, durationMs)
+    }
+
+    private fun playPulse() {
+        repeat(3) {
+            playTone(660.0, 80, 0.7f)
+            Thread.sleep(60)
+        }
+    }
+
     private fun playFanfare() {
-        // Финальный сигнал: восходящая последовательность
         val notes = listOf(523.25, 659.25, 783.99, 1046.5)
         notes.forEach { freq ->
             playTone(freq, 180, 0.9f)

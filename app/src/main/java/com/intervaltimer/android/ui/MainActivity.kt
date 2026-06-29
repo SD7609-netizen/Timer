@@ -1,12 +1,13 @@
 package com.intervaltimer.android.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
-import android.view.animation.AnimationUtils
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
@@ -14,8 +15,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.intervaltimer.android.R
-import com.intervaltimer.android.data.Preset
 import com.intervaltimer.android.databinding.ActivityMainBinding
 import com.intervaltimer.android.service.TimerState
 import kotlinx.coroutines.flow.collectLatest
@@ -42,9 +41,27 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        requestOverlayPermission()
         setupPresetList()
         setupTimerControls()
         observeTimerState()
+    }
+
+    private fun requestOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Разрешение для виджета")
+                .setMessage("Чтобы таймер отображался поверх других приложений, разреши это в настройках.")
+                .setPositiveButton("Открыть настройки") { _, _ ->
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivity(intent)
+                }
+                .setNegativeButton("Пропустить", null)
+                .show()
+        }
     }
 
     private fun setupPresetList() {
