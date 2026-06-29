@@ -7,9 +7,8 @@ import android.graphics.PixelFormat
 import android.os.IBinder
 import android.provider.Settings
 import android.view.*
-import android.widget.ProgressBar
-import android.widget.TextView
 import androidx.core.app.NotificationCompat
+import com.intervaltimer.android.ui.CircularTimerView
 import com.intervaltimer.android.R
 import com.intervaltimer.android.data.AppDatabase
 import com.intervaltimer.android.data.Interval
@@ -170,7 +169,7 @@ class TimerService : Service() {
         if (overlayView != null) return
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        overlayView = LayoutInflater.from(this).inflate(R.layout.layout_floating_timer, null)
+        overlayView = CircularTimerView(this)
 
         overlayParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -183,6 +182,11 @@ class TimerService : Service() {
             x = 60
             y = 200
         }
+
+        val density = resources.displayMetrics.density
+        val sizePx = (130 * density).toInt()
+        overlayParams!!.width = sizePx
+        overlayParams!!.height = sizePx
 
         windowManager!!.addView(overlayView, overlayParams)
 
@@ -207,10 +211,9 @@ class TimerService : Service() {
     }
 
     private fun updateOverlayUi(name: String, time: String, progress: Int) {
-        val v = overlayView ?: return
-        v.findViewById<TextView>(R.id.tvOverlayName)?.text = name
-        v.findViewById<TextView>(R.id.tvOverlayTime)?.text = time
-        v.findViewById<ProgressBar>(R.id.overlayProgress)?.progress = progress
+        val v = overlayView as? CircularTimerView ?: return
+        v.timeText = time
+        v.progress = progress / 100f
     }
 
     private fun hideOverlay() {

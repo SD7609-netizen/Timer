@@ -87,6 +87,7 @@ class EditPresetActivity : AppCompatActivity() {
         touchHelper.attachToRecyclerView(binding.rvIntervals)
 
         binding.btnAddInterval.setOnClickListener { showIntervalDialog(-1) }
+        binding.btnAutoGenerate.setOnClickListener { showAutoSeriesDialog() }
     }
 
     private fun setupFinalSoundSpinner() {
@@ -193,6 +194,83 @@ class EditPresetActivity : AppCompatActivity() {
                     intervals.add(interval)
                     intervalAdapter.notifyItemInserted(intervals.size - 1)
                 }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun showAutoSeriesDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_auto_series, null)
+        val etTotal = view.findViewById<TextInputEditText>(R.id.etTotalMinutes)
+        val etIntMin = view.findViewById<TextInputEditText>(R.id.etIntervalMinutes)
+        val etIntSec = view.findViewById<TextInputEditText>(R.id.etIntervalSeconds)
+        val etName = view.findViewById<TextInputEditText>(R.id.etSeriesName)
+        val spinner = view.findViewById<android.widget.Spinner>(R.id.spinnerSeriesSound)
+        val tvPreview = view.findViewById<android.widget.TextView>(R.id.tvSeriesPreview)
+
+        val availableSounds = SoundType.values().filter { it != SoundType.FANFARE }
+        val soundAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, availableSounds.map { it.label })
+        soundAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = soundAdapter
+
+        fun updatePreview() {
+            val totalSec = (etTotal.text?.toString()?.toIntOrNull() ?: 0) * 60
+            val intSec = (etIntMin.text?.toString()?.toIntOrNull() ?: 0) * 60 +
+                    (etIntSec.text?.toString()?.toIntOrNull() ?: 0)
+            if (intSec > 0 && totalSec > 0) {
+                val count = totalSec / intSec
+                val rem = totalSec % intSec
+                val intLabel = if (intSec >= 60) "${intSec/60} мин" else "${intSec} сек"
+                tvPreview.text = "Будет создано: $count интервалов по $intLabel" +
+                        (if (rem > 0) " + остаток ${rem}с" else "")
+            } else {
+                tvPreview.text = "Укажите корректные значения"
+            }
+        }
+
+        updatePreview()
+
+        val watcher = object : android.text.TextWatcher {
+            override fun afterTextChanged(s: android.text.Editable?) = updatePreview()
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) {}
+        }
+        etTotal.addTextChangedListener(watcher)
+        etIntMin.addTextChangedListener(watcher)
+        etIntSec.addTextChangedListener(watcher)
+
+        AlertDialog.Builder(this)
+            .setTitle("Авто-серия интервалов")
+            .setView(view)
+            .setPositiveButton("Создать") { _, _ ->
+                val totalSec = (etTotal.text?.toString()?.toIntOrNull() ?: 0) * 60
+                val intSec = (etIntMin.text?.toString()?.toIntOrNull() ?: 0) * 60 +
+                        (etIntSec.text?.toString()?.toIntOrNull() ?: 0)
+                val name = etName.text?.toString()?.trim()?.ifEmpty { "Интервал" } ?: "Интервал"
+                val sound = availableSounds[spinner.selectedItemPosition]
+
+                if (intSec <= 0 || totalSec <= 0) {
+                    Toast.makeText(this, "Некорректные значения", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val count = totalSec / intSec
+                if (count <= 0) {
+                    Toast.makeText(this, "Интервал больше общего времени", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                val startPos = intervals.size
+                repeat(count) { i ->
+                    intervals.add(Interval(
+                        presetId = presetId,
+                        position = startPos + i,
+                        name = if (count > 1) "$name ${startPos + i + 1}" else name,
+                        durationSeconds = intSec,
+                        soundType = sound
+                    ))
+                }
+                intervalAdapter.notifyItemRangeInserted(startPos, count)
+                Toast.makeText(this, "Добавлено $count интервалов", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Отмена", null)
             .show()

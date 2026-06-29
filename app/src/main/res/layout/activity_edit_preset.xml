@@ -95,6 +95,14 @@
                     android:textSize="18sp"
                     android:fontFamily="sans-serif-medium" />
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAutoGenerate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Авто-серия"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="@color/text_secondary"
+                    android:layout_marginEnd="8dp" />
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnAddInterval"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
