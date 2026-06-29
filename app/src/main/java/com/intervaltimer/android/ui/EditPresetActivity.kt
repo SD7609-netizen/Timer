@@ -128,7 +128,7 @@ class EditPresetActivity : AppCompatActivity() {
             intervalAdapter.notifyDataSetChanged()
         }
         // Load preset name from presets flow
-        androidx.lifecycle.lifecycleScope.launch {
+        lifecycleScope.launch {
             vm.presets.collect { list ->
                 val p = list.find { it.id == presetId }
                 if (p != null && existingPreset == null) {
