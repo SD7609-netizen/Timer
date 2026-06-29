@@ -114,14 +114,24 @@ class TimerService : Service() {
                     isPaused = false
                 )
                 val timeStr = formatTime(remainingSeconds)
+                val prog = ((interval.durationSeconds - remainingSeconds).toFloat() / interval.durationSeconds * 100).toInt()
+                val totalRemaining = intervals.drop(currentIndex + 1).sumOf { it.durationSeconds } + remainingSeconds
                 updateNotification(interval.name, timeStr)
-                updateOverlayUi(interval.name, timeStr,
-                    ((interval.durationSeconds - remainingSeconds).toFloat() / interval.durationSeconds * 100).toInt())
+                updateOverlayUi(
+                    top = "${intervals.size} / ${intervals.size - currentIndex}",
+                    time = timeStr,
+                    bottom = "ещё ${formatTime(totalRemaining)}",
+                    progress = prog
+                )
                 delay(1000)
                 if (!isPaused) remainingSeconds--
             }
 
-            sound.play(interval.soundType, vibrationEnabled)
+            if (interval.customSoundPath.isNotEmpty()) {
+                sound.playCustom(interval.customSoundPath, vibrationEnabled)
+            } else {
+                sound.play(interval.soundType, vibrationEnabled)
+            }
             currentIndex++
             delay(500)
             runInterval()
@@ -132,7 +142,7 @@ class TimerService : Service() {
         sound.play(finalSound, vibrationEnabled)
         state.value = TimerState.Finished
         updateNotification("Готово!", "Все интервалы завершены")
-        updateOverlayUi("Готово!", "0:00", 100)
+        updateOverlayUi("Финиш", "0:00", "Выполнено!", 100)
         scope.launch {
             delay(3000)
             stopSelf()
@@ -210,9 +220,11 @@ class TimerService : Service() {
         })
     }
 
-    private fun updateOverlayUi(name: String, time: String, progress: Int) {
+    private fun updateOverlayUi(top: String, time: String, bottom: String, progress: Int) {
         val v = overlayView as? CircularTimerView ?: return
+        v.labelTop = top
         v.timeText = time
+        v.labelBottom = bottom
         v.progress = progress / 100f
     }
 
