@@ -8,7 +8,9 @@ data class Preset(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val finalSoundType: SoundType = SoundType.FANFARE,
-    val vibrationEnabled: Boolean = true
+    val vibrationEnabled: Boolean = true,
+    val loopCount: Int = 0,         // 0 = без повтора, -1 = бесконечно, N = повторить N раз
+    val warningSeconds: Int = 10    // предупреждение за N сек до конца интервала (0 = выкл)
 )
 
 data class PresetWithIntervals(

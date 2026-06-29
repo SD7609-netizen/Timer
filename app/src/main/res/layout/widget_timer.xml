@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/widget_bg"
+    android:padding="10dp">
+
+    <TextView
+        android:id="@+id/tvWidgetInterval"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Таймер"
+        android:textColor="#FFFFCC00"
+        android:textSize="11sp"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <TextView
+        android:id="@+id/tvWidgetTime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="--:--"
+        android:textColor="#FFFFFFFF"
+        android:textSize="30sp"
+        android:fontFamily="monospace"
+        android:textStyle="bold"
+        android:layout_marginTop="2dp" />
+
+    <ProgressBar
+        android:id="@+id/progressWidget"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="5dp"
+        android:layout_marginTop="6dp"
+        android:progressTint="#FFFFCC00"
+        android:progressBackgroundTint="#33FFFFFF"
+        android:max="100"
+        android:progress="0" />
+
+</LinearLayout>

@@ -43,9 +43,12 @@ class TimerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun savePreset(name: String, finalSound: SoundType, vibration: Boolean, intervals: List<Interval>, onDone: (Long) -> Unit) {
+    fun savePreset(name: String, finalSound: SoundType, vibration: Boolean,
+                   loopCount: Int, warningSeconds: Int,
+                   intervals: List<Interval>, onDone: (Long) -> Unit) {
         viewModelScope.launch {
-            val preset = Preset(name = name, finalSoundType = finalSound, vibrationEnabled = vibration)
+            val preset = Preset(name = name, finalSoundType = finalSound, vibrationEnabled = vibration,
+                loopCount = loopCount, warningSeconds = warningSeconds)
             val id = db.presetDao().insert(preset)
             val withIds = intervals.mapIndexed { i, iv -> iv.copy(presetId = id, position = i, id = 0) }
             db.intervalDao().insertAll(withIds)

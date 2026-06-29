@@ -11,7 +11,8 @@ data class Interval(
     val name: String,
     val durationSeconds: Int,
     val soundType: SoundType = SoundType.BEEP_SINGLE,
-    val customSoundPath: String = ""   // путь к файлу в internal storage, если задан
+    val customSoundPath: String = "",
+    val intervalType: IntervalType = IntervalType.NORMAL
 )
 
 enum class SoundType(val label: String) {
@@ -26,4 +27,10 @@ enum class SoundType(val label: String) {
     DING("Динь"),
     PULSE("Пульс"),
     FANFARE("Финальный сигнал")
+}
+
+enum class IntervalType(val label: String) {
+    NORMAL("Обычный"),
+    ACTIVE("Активный"),
+    REST("Отдых")
 }

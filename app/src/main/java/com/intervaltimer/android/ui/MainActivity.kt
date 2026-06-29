@@ -45,6 +45,12 @@ class MainActivity : AppCompatActivity() {
         setupPresetList()
         setupTimerControls()
         observeTimerState()
+        binding.toolbar.setOnMenuItemClickListener { item ->
+            if (item.itemId == R.id.action_settings) {
+                startActivity(Intent(this, SettingsActivity::class.java))
+                true
+            } else false
+        }
     }
 
     private fun requestOverlayPermission() {

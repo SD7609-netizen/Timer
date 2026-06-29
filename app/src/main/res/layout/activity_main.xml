@@ -21,7 +21,8 @@
                 android:layout_height="?attr/actionBarSize"
                 android:background="@color/surface_dark"
                 app:title="Интервальный таймер"
-                app:titleTextColor="@color/text_primary" />
+                app:titleTextColor="@color/text_primary"
+                app:menu="@menu/menu_main" />
         </com.google.android.material.appbar.AppBarLayout>
 
         <androidx.recyclerview.widget.RecyclerView

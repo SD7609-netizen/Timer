@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 
-@Database(entities = [Preset::class, Interval::class], version = 2, exportSchema = false)
+@Database(entities = [Preset::class, Interval::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun presetDao(): PresetDao
@@ -27,4 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
 class Converters {
     @TypeConverter fun soundToString(s: SoundType): String = s.name
     @TypeConverter fun stringToSound(s: String): SoundType = SoundType.valueOf(s)
+    @TypeConverter fun intervalTypeToString(t: IntervalType): String = t.name
+    @TypeConverter fun stringToIntervalType(s: String): IntervalType =
+        try { IntervalType.valueOf(s) } catch (_: Exception) { IntervalType.NORMAL }
 }
