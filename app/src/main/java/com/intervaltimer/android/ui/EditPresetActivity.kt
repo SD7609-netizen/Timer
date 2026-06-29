@@ -2,10 +2,14 @@ package com.intervaltimer.android.ui
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +24,8 @@ import com.intervaltimer.android.data.Interval
 import com.intervaltimer.android.data.Preset
 import com.intervaltimer.android.data.SoundType
 import com.intervaltimer.android.databinding.ActivityEditPresetBinding
+import java.io.File
+import java.io.FileOutputStream
 
 class EditPresetActivity : AppCompatActivity() {
 
@@ -36,6 +42,31 @@ class EditPresetActivity : AppCompatActivity() {
     private var presetId: Long = -1L
     private var existingPreset: Preset? = null
     private var selectedFinalSound = SoundType.FANFARE
+
+    // File picker для кастомного звука (используется из диалога интервала)
+    private var pendingCustomSoundCallback: ((String) -> Unit)? = null
+    private val soundFilePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        val path = copyAudioToInternal(uri)
+        if (path != null) {
+            pendingCustomSoundCallback?.invoke(path)
+        } else {
+            Toast.makeText(this, "Не удалось скопировать файл", Toast.LENGTH_SHORT).show()
+        }
+        pendingCustomSoundCallback = null
+    }
+
+    private fun copyAudioToInternal(uri: Uri): String? {
+        return try {
+            val dir = File(filesDir, "sounds").also { it.mkdirs() }
+            val name = "sound_${System.currentTimeMillis()}.mp3"
+            val dest = File(dir, name)
+            contentResolver.openInputStream(uri)?.use { input ->
+                FileOutputStream(dest).use { output -> input.copyTo(output) }
+            }
+            dest.absolutePath
+        } catch (_: Exception) { null }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -150,6 +181,10 @@ class EditPresetActivity : AppCompatActivity() {
         val etMinutes = view.findViewById<TextInputEditText>(R.id.etMinutes)
         val etSeconds = view.findViewById<TextInputEditText>(R.id.etSeconds)
         val spinnerSound = view.findViewById<android.widget.Spinner>(R.id.spinnerSound)
+        val tvCustomLabel = view.findViewById<TextView>(R.id.tvCustomSoundLabel)
+        val btnPickSound = view.findViewById<Button>(R.id.btnPickSound)
+
+        var customSoundPath = ""
 
         val soundLabels = SoundType.values().filter { it != SoundType.FANFARE }.map { it.label }
         val soundAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, soundLabels)
@@ -163,6 +198,18 @@ class EditPresetActivity : AppCompatActivity() {
             etSeconds.setText((existing.durationSeconds % 60).toString())
             val soundIndex = SoundType.values().filter { it != SoundType.FANFARE }.indexOf(existing.soundType)
             if (soundIndex >= 0) spinnerSound.setSelection(soundIndex)
+            if (existing.customSoundPath.isNotEmpty()) {
+                customSoundPath = existing.customSoundPath
+                tvCustomLabel.text = "Свой: ${File(existing.customSoundPath).name}"
+            }
+        }
+
+        btnPickSound.setOnClickListener {
+            pendingCustomSoundCallback = { path ->
+                customSoundPath = path
+                tvCustomLabel.text = "Свой: ${File(path).name}"
+            }
+            soundFilePicker.launch("audio/*")
         }
 
         AlertDialog.Builder(this)
@@ -185,7 +232,8 @@ class EditPresetActivity : AppCompatActivity() {
                     position = editPosition.coerceAtLeast(0),
                     name = name,
                     durationSeconds = total,
-                    soundType = sound
+                    soundType = sound,
+                    customSoundPath = customSoundPath
                 )
                 if (editPosition >= 0) {
                     intervals[editPosition] = interval

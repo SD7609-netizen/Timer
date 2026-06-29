@@ -3,10 +3,13 @@ package com.intervaltimer.android.service
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.MediaPlayer
 import android.os.VibrationEffect
 import android.os.Vibrator
 import com.intervaltimer.android.data.SoundType
+import java.io.File
 import kotlin.math.PI
 import kotlin.math.exp
 import kotlin.math.sin
@@ -14,6 +17,28 @@ import kotlin.math.sin
 class SoundManager(private val context: Context) {
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+
+    fun playCustom(filePath: String, vibrate: Boolean = true) {
+        val file = File(filePath)
+        if (!file.exists()) return
+        Thread {
+            try {
+                val mp = MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+                    )
+                    setDataSource(filePath)
+                    prepare()
+                    start()
+                    setOnCompletionListener { release() }
+                }
+            } catch (_: Exception) {}
+        }.start()
+        if (vibrate) vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 200), -1))
+    }
 
     fun play(soundType: SoundType, vibrate: Boolean = true) {
         Thread {

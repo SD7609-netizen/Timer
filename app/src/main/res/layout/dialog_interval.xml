@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -66,6 +67,34 @@
     <Spinner
         android:id="@+id/spinnerSound"
         android:layout_width="match_parent"
-        android:layout_height="48dp" />
+        android:layout_height="48dp"
+        android:layout_marginBottom="12dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvCustomSoundLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Свой звук: не выбран"
+            android:textSize="12sp"
+            android:textColor="#FF8A8FA8"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPickSound"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Выбрать файл"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:strokeColor="#FF4CAF82" />
+
+    </LinearLayout>
 
 </LinearLayout>

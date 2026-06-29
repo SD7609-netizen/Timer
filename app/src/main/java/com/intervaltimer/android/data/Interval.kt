@@ -10,7 +10,8 @@ data class Interval(
     val position: Int,
     val name: String,
     val durationSeconds: Int,
-    val soundType: SoundType = SoundType.BEEP_SINGLE
+    val soundType: SoundType = SoundType.BEEP_SINGLE,
+    val customSoundPath: String = ""   // путь к файлу в internal storage, если задан
 )
 
 enum class SoundType(val label: String) {

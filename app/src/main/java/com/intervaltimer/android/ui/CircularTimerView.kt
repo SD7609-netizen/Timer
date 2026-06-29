@@ -12,54 +12,63 @@ class CircularTimerView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
+    // Жёлтый акцент
+    private val accentColor = Color.parseColor("#FFFFCC00")
+    private val accentDim   = Color.parseColor("#66FFCC00")
+
     var timeText: String = "0:00"
         set(v) { field = v; invalidate() }
-
-    // progress 0..1 — сколько времени прошло (для стрелки)
-    var progress: Float = 0f
+    var progress: Float = 0f           // 0..1 прогресс текущего интервала
+        set(v) { field = v; invalidate() }
+    var labelTop: String = ""          // "3 / 5"
+        set(v) { field = v; invalidate() }
+    var labelBottom: String = ""       // "ещё 12 мин"
         set(v) { field = v; invalidate() }
 
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#E6141820")
+        color = Color.parseColor("#EE141820")
         style = Paint.Style.FILL
     }
-
     private val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#33FFFFFF")
         style = Paint.Style.STROKE
         strokeWidth = 10f
     }
-
     private val arcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF4CAF82")
+        color = accentColor
         style = Paint.Style.STROKE
         strokeWidth = 10f
         strokeCap = Paint.Cap.ROUND
     }
-
     private val tickPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#44FFFFFF")
+        color = Color.parseColor("#33FFFFFF")
         style = Paint.Style.STROKE
-        strokeWidth = 2f
+        strokeWidth = 1.5f
     }
-
     private val handPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF4CAF82")
+        color = accentColor
         style = Paint.Style.STROKE
-        strokeWidth = 4f
+        strokeWidth = 3.5f
         strokeCap = Paint.Cap.ROUND
     }
-
-    private val centerDotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF4CAF82")
+    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = accentColor
         style = Paint.Style.FILL
     }
-
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val timePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textAlign = Paint.Align.CENTER
-        textSize = 42f
         typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+    }
+    private val topPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = accentColor
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    private val bottomPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#CCFFFFFF")
+        textAlign = Paint.Align.CENTER
+        typeface = Typeface.DEFAULT
     }
 
     private val arcRect = RectF()
@@ -72,21 +81,22 @@ class CircularTimerView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         val cx = width / 2f
         val cy = height / 2f
-        val radius = min(cx, cy) - 16f
-        val arcRadius = radius - 5f
+        val radius = min(cx, cy) - 14f
+        val arcR = radius - 5f
 
-        // Фон — круг
+        // Фон-круг
         canvas.drawCircle(cx, cy, radius, bgPaint)
 
-        // Трек (полный круг серый)
-        arcRect.set(cx - arcRadius, cy - arcRadius, cx + arcRadius, cy + arcRadius)
+        // Трек
+        arcRect.set(cx - arcR, cy - arcR, cx + arcR, cy + arcR)
         canvas.drawArc(arcRect, -90f, 360f, false, trackPaint)
 
-        // Засечки-минуты (12 штук)
+        // 12 засечек
         for (i in 0 until 12) {
             val angle = Math.toRadians((i * 30 - 90).toDouble())
-            val innerR = radius - 22f
-            val outerR = radius - 10f
+            val len = if (i % 3 == 0) 14f else 8f
+            val innerR = radius - len - 5f
+            val outerR = radius - 5f
             canvas.drawLine(
                 cx + (innerR * cos(angle)).toFloat(), cy + (innerR * sin(angle)).toFloat(),
                 cx + (outerR * cos(angle)).toFloat(), cy + (outerR * sin(angle)).toFloat(),
@@ -95,23 +105,36 @@ class CircularTimerView @JvmOverloads constructor(
         }
 
         // Дуга прогресса
-        if (progress > 0f) {
+        if (progress > 0.001f) {
             canvas.drawArc(arcRect, -90f, progress * 360f, false, arcPaint)
         }
 
-        // Стрелка-часовая
-        val handLength = radius - 26f
+        // Стрелка
+        val handLen = radius - 22f
         val handAngle = Math.toRadians((progress * 360f - 90f).toDouble())
-        val hx = cx + (handLength * cos(handAngle)).toFloat()
-        val hy = cy + (handLength * sin(handAngle)).toFloat()
+        val hx = cx + (handLen * cos(handAngle)).toFloat()
+        val hy = cy + (handLen * sin(handAngle)).toFloat()
         canvas.drawLine(cx, cy, hx, hy, handPaint)
+        canvas.drawCircle(cx, cy, 6f, dotPaint)
 
-        // Центральная точка
-        canvas.drawCircle(cx, cy, 7f, centerDotPaint)
+        // ── Текст: 3 зоны ──
+        val innerRadius = radius - 20f
 
-        // Время в центре
-        textPaint.textSize = radius * 0.38f
-        val textY = cy - (textPaint.descent() + textPaint.ascent()) / 2f
-        canvas.drawText(timeText, cx, textY, textPaint)
+        // Сверху: сет "3 / 5"
+        if (labelTop.isNotEmpty()) {
+            topPaint.textSize = radius * 0.22f
+            canvas.drawText(labelTop, cx, cy - innerRadius * 0.42f, topPaint)
+        }
+
+        // Центр: время
+        timePaint.textSize = radius * 0.40f
+        val timeY = cy - (timePaint.descent() + timePaint.ascent()) / 2f
+        canvas.drawText(timeText, cx, timeY, timePaint)
+
+        // Снизу: остаток "ещё 12 мин"
+        if (labelBottom.isNotEmpty()) {
+            bottomPaint.textSize = radius * 0.18f
+            canvas.drawText(labelBottom, cx, cy + innerRadius * 0.50f, bottomPaint)
+        }
     }
 }

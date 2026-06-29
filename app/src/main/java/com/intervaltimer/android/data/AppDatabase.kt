@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 
-@Database(entities = [Preset::class, Interval::class], version = 1, exportSchema = false)
+@Database(entities = [Preset::class, Interval::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun presetDao(): PresetDao
@@ -18,6 +18,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun get(context: Context): AppDatabase = INSTANCE ?: synchronized(this) {
             INSTANCE ?: Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, "timer.db")
+                .fallbackToDestructiveMigration()
                 .build().also { INSTANCE = it }
         }
     }
