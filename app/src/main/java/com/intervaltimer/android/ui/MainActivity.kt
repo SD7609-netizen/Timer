@@ -15,6 +15,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.intervaltimer.android.R
 import com.intervaltimer.android.databinding.ActivityMainBinding
 import com.intervaltimer.android.service.TimerState
 import kotlinx.coroutines.flow.collectLatest
