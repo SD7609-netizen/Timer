@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#FF0F1117</color>
+    <color name="surface_dark">#FF1E2130</color>
+    <color name="card_interval">#FF252A3A</color>
+    <color name="accent">#FF4CAF82</color>
+    <color name="accent_dark">#FF2E7D5C</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#FF8A8FA8</color>
+    <color name="error_color">#FFE05555</color>
+
+    <!-- Required by Material -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="ic_launcher_background">#FF1E2130</color>
+</resources>
