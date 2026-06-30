@@ -34,6 +34,20 @@ class SettingsActivity : AppCompatActivity() {
         val currentSize = prefs.getString(TimerService.PREF_OVERLAY_SIZE, "medium")
         binding.spinnerOverlaySize.setSelection(sizeKeys.indexOf(currentSize).coerceAtLeast(0))
 
+        // Overlay style
+        val overlayStyleKeys   = listOf("1", "2", "3", "4")
+        val overlayStyleLabels = listOf(
+            "1 — Классик: дуга + метки + имя",
+            "2 — Минимал: только время и дуга",
+            "3 — Неон: тёмный фон, толстая дуга",
+            "4 — Стекло: полупрозрачный"
+        )
+        val overlayStyleAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, overlayStyleLabels)
+        overlayStyleAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerOverlayStyle.adapter = overlayStyleAdapter
+        val currentOverlayStyle = prefs.getString(TimerService.PREF_OVERLAY_STYLE, "1")
+        binding.spinnerOverlayStyle.setSelection(overlayStyleKeys.indexOf(currentOverlayStyle).coerceAtLeast(0))
+
         // Widget style
         val widgetKeys = listOf("1", "2", "3", "4", "5", "6")
         val widgetLabels = listOf(
@@ -52,8 +66,9 @@ class SettingsActivity : AppCompatActivity() {
 
         binding.btnSaveSettings.setOnClickListener {
             prefs.edit()
-                .putString(TimerService.PREF_OVERLAY_SIZE, sizeKeys[binding.spinnerOverlaySize.selectedItemPosition])
-                .putString(TimerService.PREF_WIDGET_STYLE, widgetKeys[binding.spinnerWidgetStyle.selectedItemPosition])
+                .putString(TimerService.PREF_OVERLAY_SIZE,  sizeKeys[binding.spinnerOverlaySize.selectedItemPosition])
+                .putString(TimerService.PREF_OVERLAY_STYLE, overlayStyleKeys[binding.spinnerOverlayStyle.selectedItemPosition])
+                .putString(TimerService.PREF_WIDGET_STYLE,  widgetKeys[binding.spinnerWidgetStyle.selectedItemPosition])
                 .apply()
             finish()
         }

@@ -97,6 +97,34 @@
                 android:background="#22FFFFFF"
                 android:layout_marginVertical="8dp" />
 
+            <!-- Стиль плавающего виджета (оверлей во время тренировки) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Стиль плавающего виджета"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:layout_marginBottom="4dp"
+                android:layout_marginTop="8dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Круглый виджет, который появляется во время тренировки поверх других приложений"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:layout_marginBottom="8dp" />
+            <Spinner
+                android:id="@+id/spinnerOverlayStyle"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#22FFFFFF"
+                android:layout_marginVertical="8dp" />
+
             <!-- Стиль виджета на рабочем столе -->
             <TextView
                 android:layout_width="wrap_content"

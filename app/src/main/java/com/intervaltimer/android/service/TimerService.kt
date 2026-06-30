@@ -35,10 +35,11 @@ class TimerService : Service() {
         const val EXTRA_PRESET_ID   = "preset_id"
         const val CHANNEL_ID        = "timer_channel"
         const val NOTIF_ID          = 1001
-        const val PREFS_NAME         = "timer_settings"
-        const val PREF_KEEP_SCREEN   = "keep_screen_on"
-        const val PREF_OVERLAY_SIZE  = "overlay_size"
-        const val PREF_WIDGET_STYLE  = "widget_style"
+        const val PREFS_NAME          = "timer_settings"
+        const val PREF_KEEP_SCREEN    = "keep_screen_on"
+        const val PREF_OVERLAY_SIZE   = "overlay_size"
+        const val PREF_OVERLAY_STYLE  = "overlay_style"
+        const val PREF_WIDGET_STYLE   = "widget_style"
 
         val state: MutableStateFlow<TimerState> = MutableStateFlow(TimerState.Idle)
     }
@@ -69,6 +70,7 @@ class TimerService : Service() {
     private var dragTouchX = 0f
     private var dragTouchY = 0f
     private var dragMoved = false
+    private var lastTapTime = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -275,9 +277,13 @@ class TimerService : Service() {
             gravity = Gravity.TOP or Gravity.START
             x = 60; y = 200
         }
+        // Применяем стиль оверлея
+        val overlayStyle = prefs.getString(PREF_OVERLAY_STYLE, "1")?.toIntOrNull() ?: 1
+        (overlayView as? CircularTimerView)?.drawStyle = overlayStyle
+
         windowManager!!.addView(overlayView, overlayParams)
 
-        // Касание: drag или tap (пауза/возобновление)
+        // Касание: drag, одиночный тап = пауза, двойной тап = открыть приложение
         overlayView!!.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
@@ -290,7 +296,7 @@ class TimerService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - dragTouchX
                     val dy = event.rawY - dragTouchY
-                    if (dx * dx + dy * dy > 400f) dragMoved = true   // порог ~20px
+                    if (dx * dx + dy * dy > 400f) dragMoved = true
                     if (dragMoved) {
                         overlayParams!!.x = dragInitX + dx.toInt()
                         overlayParams!!.y = dragInitY + dy.toInt()
@@ -299,9 +305,21 @@ class TimerService : Service() {
                 }
                 MotionEvent.ACTION_UP -> {
                     if (!dragMoved) {
-                        val cur = state.value
-                        if (cur is TimerState.Running) {
-                            if (cur.isPaused) resumeTimer() else pauseTimer()
+                        val now = System.currentTimeMillis()
+                        if (now - lastTapTime < 350L) {
+                            // Двойной тап — открыть приложение
+                            lastTapTime = 0L
+                            val openIntent = Intent(this, MainActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                            }
+                            startActivity(openIntent)
+                        } else {
+                            // Одиночный тап — пауза / продолжить
+                            lastTapTime = now
+                            val cur = state.value
+                            if (cur is TimerState.Running) {
+                                if (cur.isPaused) resumeTimer() else pauseTimer()
+                            }
                         }
                     }
                 }
