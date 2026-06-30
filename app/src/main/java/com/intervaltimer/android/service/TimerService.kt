@@ -35,9 +35,10 @@ class TimerService : Service() {
         const val EXTRA_PRESET_ID   = "preset_id"
         const val CHANNEL_ID        = "timer_channel"
         const val NOTIF_ID          = 1001
-        const val PREFS_NAME        = "timer_settings"
-        const val PREF_KEEP_SCREEN  = "keep_screen_on"
-        const val PREF_OVERLAY_SIZE = "overlay_size"
+        const val PREFS_NAME         = "timer_settings"
+        const val PREF_KEEP_SCREEN   = "keep_screen_on"
+        const val PREF_OVERLAY_SIZE  = "overlay_size"
+        const val PREF_WIDGET_STYLE  = "widget_style"
 
         val state: MutableStateFlow<TimerState> = MutableStateFlow(TimerState.Idle)
     }
@@ -155,7 +156,7 @@ class TimerService : Service() {
                     progress = prog,
                     accent = color
                 )
-                updateWidget(interval.name, timeStr, prog)
+                updateWidget(interval.name, timeStr, prog, "${currentIndex + 1} / ${intervals.size}")
 
                 delay(1000)
                 if (!isPaused) remainingSeconds--
@@ -197,7 +198,7 @@ class TimerService : Service() {
         state.value = TimerState.Finished
         updateNotification("Готово!", "Все интервалы завершены")
         updateOverlayUi("Финиш", "", "0:00", "Выполнено!", 100, Color.parseColor("#FF4CAF82"))
-        updateWidget("Финиш", "0:00", 100)
+        updateWidget("Финиш", "0:00", 100, "")
 
         scope.launch {
             delay(3000)
@@ -225,7 +226,7 @@ class TimerService : Service() {
         state.value = TimerState.Idle
         releaseWakeLock()
         hideOverlay()
-        updateWidget("", "--:--", 0)
+        updateWidget("", "--:--", 0, "")
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -326,14 +327,34 @@ class TimerService : Service() {
 
     // ── Home Screen Widget ─────────────────────────────────────────
 
-    private fun updateWidget(intervalName: String, timeStr: String, progress: Int) {
+    private fun widgetLayoutId(): Int {
+        val style = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_WIDGET_STYLE, "2")
+        return when (style) {
+            "1" -> R.layout.widget_1_minimal
+            "3" -> R.layout.widget_3_full
+            "4" -> R.layout.widget_4_wide
+            "5" -> R.layout.widget_5_accent
+            "6" -> R.layout.widget_6_compact
+            else -> R.layout.widget_timer  // "2" — Classic
+        }
+    }
+
+    private fun updateWidget(intervalName: String, timeStr: String, progress: Int, label: String) {
         val manager = AppWidgetManager.getInstance(this)
         val ids = manager.getAppWidgetIds(ComponentName(this, TimerWidgetProvider::class.java))
         if (ids.isEmpty()) return
-        val views = RemoteViews(packageName, R.layout.widget_timer)
+
+        val views = RemoteViews(packageName, widgetLayoutId())
         views.setTextViewText(R.id.tvWidgetInterval, intervalName.ifEmpty { "Таймер" })
+        views.setTextViewText(R.id.tvWidgetLabel, label)
         views.setTextViewText(R.id.tvWidgetTime, timeStr)
         views.setProgressBar(R.id.progressWidget, 100, progress, false)
+
+        val openIntent = android.app.PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        views.setOnClickPendingIntent(R.id.widgetRoot, openIntent)
         manager.updateAppWidget(ids, views)
     }
 
